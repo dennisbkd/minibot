@@ -260,7 +260,7 @@ app.get('/solicitudes', async (req, res) => {
       SELECT
         s.id,
         c.telefono,
-        c.contacto,
+        c.nombre,
         s.producto,
         s.estado,
         s.evento_id

@@ -58,6 +58,7 @@
       <tr>
         <th>ID</th>
         <th>Teléfono</th>
+        <th>Nombre</th>
         <th>Producto</th>
         <th>Estado</th>
         <th>Evento</th>
@@ -89,7 +90,7 @@
         if (solicitudes.length === 0) {
           tabla.innerHTML = `
             <tr>
-              <td colspan="5">No hay solicitudes registradas</td>
+              <td colspan="6">No hay solicitudes registradas</td>
             </tr>
           `;
           return;
@@ -101,6 +102,7 @@
           fila.innerHTML = `
             <td>${solicitud.id}</td>
             <td>${solicitud.telefono}</td>
+            <td>${solicitud.nombre}</td>
             <td>${solicitud.producto}</td>
             <td>
               <span class="badge badge-${solicitud.estado}">
