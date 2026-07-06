@@ -221,7 +221,7 @@ app.post('/webhook/confirmacion', async (req, res) => {
     const respuesta = await db.tx(async (t) => {
       
       const eventoExistente = await t.oneOrNone('SELECT id FROM solicitudes WHERE evento_id = $1', [evento_id]);
-      if (eventoExistente) {
+      if (!eventoExistente) {
         return { status: 200, json: { mensaje: 'Evento duplicado, ya procesado anteriormente' } };
       }
 
