@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CRM - Solicitudes</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .badge-pendiente {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .badge-confirmada {
+      background-color: #d4edda;
+      color: #155724;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>CRM de Solicitudes</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Teléfono</th>
+        <th>Producto</th>
+        <th>Estado</th>
+        <th>Evento</th>
+      </tr>
+    </thead>
+
+    <tbody id="tabla-solicitudes">
+      <tr>
+        <td colspan="5">Cargando solicitudes...</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function cargarSolicitudes() {
+      const tabla = document.getElementById('tabla-solicitudes');
+
+      try {
+        const respuesta = await fetch('/solicitudes');
+
+        if (!respuesta.ok) {
+          throw new Error('Error al obtener las solicitudes');
+        }
+
+        const solicitudes = await respuesta.json();
+
+        tabla.innerHTML = '';
+
+        if (solicitudes.length === 0) {
+          tabla.innerHTML = `
+            <tr>
+              <td colspan="5">No hay solicitudes registradas</td>
+            </tr>
+          `;
+          return;
+        }
+
+        solicitudes.forEach((solicitud) => {
+          const fila = document.createElement('tr');
+
+          fila.innerHTML = `
+            <td>${solicitud.id}</td>
+            <td>${solicitud.telefono}</td>
+            <td>${solicitud.producto}</td>
+            <td>
+              <span class="badge badge-${solicitud.estado}">
+                ${solicitud.estado}
+              </span>
+            </td>
+            <td>${solicitud.evento_id ?? '-'}</td>
+          `;
+
+          tabla.appendChild(fila);
+        });
+
+      } catch (error) {
+        console.error(error);
+
+        tabla.innerHTML = `
+          <tr>
+            <td colspan="5">
+              Error al cargar las solicitudes
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    cargarSolicitudes();
+  </script>
+
+</body>
+
+</html>

@@ -17,7 +17,7 @@ app.use(express.json())
 inicializarDB()
 
 const sesiones = {};
-app.post('/messages', (req, res) => { 
+app.post('/messages/test', (req, res) => { 
 
   const { from, text } = req.body; 
 
@@ -63,7 +63,7 @@ app.post('/messages', (req, res) => {
   }
 }); 
 
-app.post('/messages/test', async (req, res) => { 
+app.post('/messages', async (req, res) => { 
   const { from, text } = req.body; 
 
   if (!from) return res.status(400).json({ error: 'falta from' }); 
@@ -72,10 +72,12 @@ app.post('/messages/test', async (req, res) => {
   const esTelefonoValido = !isNaN(from.trim()) && from.trim() !== '';
   const mensajeLimpio = text.toLowerCase().trim();
 
-  if (!esTelefonoValido) return res.status(400).json({ error: 'El teléfono debe contener solo números' });
+  if (!esTelefonoValido) {
+    return res.status(400).json({ error: 'El teléfono debe contener solo números' });
+  }
 
   try {
-    const resultado = await db.tx(async (t) => {
+    const respuesta = await db.tx(async (t) => {
       let contacto = await t.oneOrNone('SELECT * FROM contactos WHERE telefono = $1', [from]);
       let pasoActual = 1;
 
@@ -86,12 +88,12 @@ app.post('/messages/test', async (req, res) => {
           'SELECT paso FROM mensajes WHERE contacto_id = $1 ORDER BY creado_en DESC LIMIT 1',
           [contacto.id]
         );
+
         if (ultimoMensaje) {
           pasoActual = ultimoMensaje.paso;
         }
       }
 
-      // estructura inicial del Bot
       let bot = {
         reply: "",
         producto: null,
@@ -100,41 +102,64 @@ app.post('/messages/test', async (req, res) => {
           img: "http://localhost:3000/test.png"
         }]
       };
+
       let siguientePaso = pasoActual;
+      let respuesta;
 
       switch (pasoActual) {
         case 1:
           if (mensajeLimpio === "hola") {
             siguientePaso = 2;
             bot.reply = "Hola, ¿Cómo te llamas?";
+
             await t.none(
               'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
               [contacto.id, 'in', mensajeLimpio, siguientePaso]
             );
+          respuesta = {
+           reply: bot.reply
+          };  
           } else {
             bot.reply = "No te entendí. Por favor, escribe 'Hola' para comenzar.";
+               respuesta = {
+                reply: bot.reply
+            };
           }
           break;
 
-        case 2: 
-          siguientePaso = 3;
+        case 2:
           bot.reply = `Bienvenido ${text}, ¿qué producto deseas ordenar el día de hoy?`;
+          console.log(text)
+          await t.none(
+            'UPDATE contactos SET nombre = $1 WHERE id = $2',
+            [text, contacto.id]
+          );
+        
+          siguientePaso = 3;
           await t.none(
             'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
-            [contacto.id, 'in', text, siguientePaso]
+            [contacto.id, 'in', text, siguientePaso,]
           );
-          break;
-        
+          siguientePaso = 3;
+          respuesta = {
+            reply: bot.reply,
+            productos: bot.productos
+          };
+        break;
+
         case 3:
-          if (mensajeLimpio === 'zapato') {
-            const productoSeleccionado = bot.productos.find(producto => mensajeLimpio === producto.nombre);
+          const productoSeleccionado = bot.productos.find(
+            producto => mensajeLimpio === producto.nombre
+          );
+
+          if (productoSeleccionado) {
             const totalSolicitudes = await t.one('SELECT count(*) FROM solicitudes');
             const numeroFormateado = String(totalSolicitudes.count).padStart(3, '0');
             const evento_id = `ev-${numeroFormateado}`;
-            
+
             await t.none(
-              'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
-              [contacto.id, 'in', productoSeleccionado.nombre, siguientePaso]
+              'INSERT INTO mensajes (contacto_id, direccion, texto, paso, imagen_url) VALUES ($1, $2, $3, $4, $5)',
+              [contacto.id, 'in', productoSeleccionado.nombre, siguientePaso, productoSeleccionado.img]
             );
 
             await t.none(
@@ -153,8 +178,7 @@ app.post('/messages/test', async (req, res) => {
           bot.reply = "Algo salió mal. Reiniciando...";
           break;
       }
-      
-      // Registramos el mensaje saliente del bot si hay un mensaje generado
+
       if (bot.reply) {
         await t.none(
           'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
@@ -162,19 +186,100 @@ app.post('/messages/test', async (req, res) => {
         );
       }
 
-      // Quitamos la lista de productos estáticos para no ensuciar la respuesta JSON del cliente
-      delete bot.productos; 
+      delete bot.productos;
 
-      return bot;
+      return {
+        status: 200,
+        json: respuesta ?? {
+          reply: bot.reply,
+          producto: bot.producto
+        }
+      };
     });
 
-    return res.status(200).json(resultado);
+    return res.status(respuesta.status).json(respuesta.json);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
+app.post('/webhook/confirmacion', async (req, res) => {
+  const secretHeader = req.headers['x-webhook-secret'];
+  if (!secretHeader || secretHeader !== process.env.WEBHOOK_SECRET) {
+    return res.status(401).json({ error: 'no autorizado' });
+  }
+
+  const { evento_id, solicitud_id } = req.body;
+
+  if (!evento_id || !solicitud_id) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios: evento_id y solicitud_id' });
+  }
+
+  try {
+    const respuesta = await db.tx(async (t) => {
+      
+      const eventoExistente = await t.oneOrNone('SELECT id FROM solicitudes WHERE evento_id = $1', [evento_id]);
+      if (eventoExistente) {
+        return { status: 200, json: { mensaje: 'Evento duplicado, ya procesado anteriormente' } };
+      }
+
+      // actualizar la solicitud pendiente
+      const resultado = await t.result(`
+        UPDATE solicitudes 
+        SET estado = 'confirmada', evento_id = $1 
+        WHERE id = $2 AND estado = 'pendiente'
+      `, [evento_id, solicitud_id]);
+
+      // verificamos porque no afecto la fila
+      if (resultado.rowCount === 0) {
+        const solicitudExiste = await t.oneOrNone('SELECT id, estado FROM solicitudes WHERE id = $1', [solicitud_id]);
+        
+        if (!solicitudExiste) {
+          return { status: 404, json: { error: 'Solicitud no encontrada' } };
+        }
+        
+        return { status: 200, json: { mensaje: 'La solicitud ya estaba confirmada o no disponible' } };
+      }
+
+      return { status: 200, json: { mensaje: 'Solicitud confirmada exitosamente' } };
+    });
+
+    return res.status(respuesta.status).json(respuesta.json);
+
+  } catch (error) {
+    console.error('Error procesando confirmación de webhook:', error);
+    return res.status(500).json({ error: 'Error interno de la base de datos' });
+  }
+});
+
+app.get('/solicitudes', async (req, res) => {
+  try {
+    const solicitudes = await db.any(`
+      SELECT
+        s.id,
+        c.telefono,
+        c.contacto,
+        s.producto,
+        s.estado,
+        s.evento_id
+      FROM solicitudes s
+      JOIN contactos c
+      ON c.id = s.contacto_id
+      ORDER BY s.id DESC
+    `);
+
+    return res.status(200).json(solicitudes);
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: 'Error al obtener las solicitudes'
+    });
+  }
+});
 
 
 app.listen(port, () => {
