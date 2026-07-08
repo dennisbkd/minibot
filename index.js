@@ -3,6 +3,7 @@ import express from 'express'
 import path from "node:path";
 import db, { inicializarDB } from './config/database.js'
 import { fileURLToPath } from 'node:url';
+import axios from 'axios';
 
 const app = express()
 const port = 3000
@@ -111,7 +112,6 @@ app.post('/messages', async (req, res) => {
           if (mensajeLimpio === "hola") {
             siguientePaso = 2;
             bot.reply = "Hola, ¿Cómo te llamas?";
-
             await t.none(
               'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
               [contacto.id, 'in', mensajeLimpio, siguientePaso]
@@ -184,6 +184,7 @@ app.post('/messages', async (req, res) => {
           'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
           [contacto.id, 'out', bot.reply, siguientePaso]
         );
+        await enviarMensajeWhatsApp(from,bot.reply)
       }
 
       delete bot.productos;
@@ -281,6 +282,89 @@ app.get('/solicitudes', async (req, res) => {
   }
 });
 
+app.post('/test-whatsapp', async (req,res) => {
+  try {
+    const resultado = await enviarMensajeWhatsApp(
+      process.env.WHATSAPP_TEST_NUMBER,
+      'Hola, este mensaje fue enviado desde Node.js'
+    )
+
+    return res.status(200).json({
+      mensaje: 'mensaje enviado correctamente',
+      resultado
+    }) 
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+
+    return res.status(500).json({
+      error: 'No se pudo enviar el mensaje',
+      detalle: error.response?.data || error.message
+    });
+  }
+})
+
+async function enviarMensajeWhatsApp(to, mensaje) {
+  const url = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
+
+ const response = await axios.post(
+    url,
+    {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'text',
+      text: {
+        preview_url: false,
+        body: mensaje
+      }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+
+  return response.data;
+}
+
+app.get('/webhook/whatsapp', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  console.log('Verificando webhook:', req.query);
+
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    console.log('Webhook verificado');
+    return res.status(200).send(challenge);
+  }
+
+  return res.sendStatus(403);
+});
+
+app.post('/webhook/whatsapp', async (req, res) => {
+  try {
+    const body =  JSON.stringify(req.body, null, 2)
+
+    console.log("body", body)
+
+    return res.status(200).json({
+      recibido: true
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.sendStatus(500);
+  }
+});
+
+
+app.get('/test', (req,res)=>{
+  res.send('Hola esto es un test para ngrok')
+})
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
