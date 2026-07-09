@@ -17,6 +17,405 @@ app.use(express.json())
 
 inicializarDB()
 
+const sesiones = {};
+app.post('/messages/test', (req, res) => { 
+
+  const { from, text } = req.body; 
+
+  if (!from) return res.status(400).json({ error: 'falta from' }); 
+  if(!text) return res.status(400).json({ error: 'falta text' }); 
+  
+  const s = sesiones[from] ??= { paso: 1, datos: {} };
+  const mensajeLimpio = text.toLowerCase().trim();
+
+  let bot = '';
+  switch (s.paso) {
+    case 1:
+      if (mensajeLimpio === "hola") {
+        s.paso = 2;
+        bot = "Hola, ¿Cómo te llamas?";
+        return res.json({ bot });
+      } else {
+        return res.json({ bot: "No te entendí. Por favor, escribe 'Hola' para comenzar." });
+      }
+      break;
+    case 2: 
+      s.paso = 3;
+      s.datos.usuario = text; 
+      bot = `Bienvenido ${text}, ¿qué producto deseas ordenar el día de hoy?`;
+      return res.json({
+        bot,
+        producto: "zapato",
+        img: `http://localhost:3000/test.png`
+      });
+      break;
+    case 3:
+      if (mensajeLimpio === 'zapato') {
+        s.datos.estado = "pendiente";
+        s.datos.producto = text;
+        bot = `Tu pedido de ${text} está en estado pendiente.`;
+
+        return res.json({ bot, image: `http://localhost:3000/test.png` });
+      } else {
+        return res.json({ bot: "Lo siento, actualmente solo tenemos disponible: 'zapato'." });
+      }
+      default:
+      return res.json({ bot: "Algo salió mal con tu sesión, la hemos reiniciado. Por favor escribe 'Hola'." });
+  }
+}); 
+
+app.post('/messages', async (req, res) => { 
+  const { from, text } = req.body; 
+
+  if (!from) return res.status(400).json({ error: 'falta from' }); 
+  if (!text) return res.status(400).json({ error: 'falta text' });
+
+  const esTelefonoValido = !isNaN(from.trim()) && from.trim() !== '';
+  const mensajeLimpio = text.toLowerCase().trim();
+
+  if (!esTelefonoValido) {
+    return res.status(400).json({ error: 'El teléfono debe contener solo números' });
+  }
+
+  try {
+    const respuesta = await db.tx(async (t) => {
+      let contacto = await t.oneOrNone('SELECT * FROM contactos WHERE telefono = $1', [from]);
+      let pasoActual = 1;
+
+      if (!contacto) {
+        contacto = await t.one('INSERT INTO contactos(telefono) VALUES($1) RETURNING *', [from]);
+      } else {
+        const ultimoMensaje = await t.oneOrNone(
+          'SELECT paso FROM mensajes WHERE contacto_id = $1 ORDER BY creado_en DESC LIMIT 1',
+          [contacto.id]
+        );
+
+        if (ultimoMensaje) {
+          pasoActual = ultimoMensaje.paso;
+        }
+      }
+
+      let bot = {
+        reply: "",
+        producto: null,
+        productos: [{
+          nombre: "zapato",
+          img: "http://localhost:3000/test.png"
+        }]
+      };
+
+      let siguientePaso = pasoActual;
+      let respuesta;
+
+      switch (pasoActual) {
+        case 1:
+          if (mensajeLimpio === "hola") {
+            siguientePaso = 2;
+            bot.reply = "Hola, ¿Cómo te llamas?";
+            await t.none(
+              'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+              [contacto.id, 'in', mensajeLimpio, siguientePaso]
+            );
+          respuesta = {
+           reply: bot.reply
+          };  
+          } else {
+            bot.reply = "No te entendí. Por favor, escribe 'Hola' para comenzar.";
+               respuesta = {
+                reply: bot.reply
+            };
+          }
+          break;
+
+        case 2:
+          bot.reply = `Bienvenido ${text}, ¿qué producto deseas ordenar el día de hoy?`;
+          console.log(text)
+          await t.none(
+            'UPDATE contactos SET nombre = $1 WHERE id = $2',
+            [text, contacto.id]
+          );
+        
+          siguientePaso = 3;
+          await t.none(
+            'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+            [contacto.id, 'in', text, siguientePaso,]
+          );
+          siguientePaso = 3;
+          respuesta = {
+            reply: bot.reply,
+            productos: bot.productos
+          };
+        break;
+
+        case 3:
+          const productoSeleccionado = bot.productos.find(
+            producto => mensajeLimpio === producto.nombre
+          );
+
+          if (productoSeleccionado) {
+            const totalSolicitudes = await t.one('SELECT count(*) FROM solicitudes');
+            const numeroFormateado = String(totalSolicitudes.count).padStart(3, '0');
+            const evento_id = `ev-${numeroFormateado}`;
+
+            await t.none(
+              'INSERT INTO mensajes (contacto_id, direccion, texto, paso, imagen_url) VALUES ($1, $2, $3, $4, $5)',
+              [contacto.id, 'in', productoSeleccionado.nombre, siguientePaso, productoSeleccionado.img]
+            );
+
+            await t.none(
+              'INSERT INTO solicitudes (producto, estado, evento_id, contacto_id) VALUES($1, $2, $3, $4)',
+              [productoSeleccionado.nombre, "pendiente", evento_id, contacto.id]
+            );
+
+            bot.reply = `Tu pedido de ${text} está en estado pendiente.`;
+            bot.producto = productoSeleccionado.img;
+          } else {
+            bot.reply = "Lo siento, actualmente solo tenemos disponible: 'zapato'.";
+          }
+          break;
+
+        default:
+          bot.reply = "Algo salió mal. Reiniciando...";
+          break;
+      }
+
+      if (bot.reply) {
+        await t.none(
+          'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+          [contacto.id, 'out', bot.reply, siguientePaso]
+        );
+        await enviarMensajeWhatsApp(from,bot.reply)
+      }
+
+      delete bot.productos;
+
+      return {
+        status: 200,
+        json: respuesta ?? {
+          reply: bot.reply,
+          producto: bot.producto
+        }
+      };
+    });
+
+    return res.status(respuesta.status).json(respuesta.json);
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.post('/messages', async (req, res) => {
+  const { from, text } = req.body;
+
+  try {
+    const respuesta = await procesarMensajeBot(from, text);
+
+    if (respuesta.status === 200 && respuesta.json.reply) {
+      await enviarMensajeWhatsApp(from, respuesta.json.reply);
+    }
+
+    return res.status(respuesta.status).json(respuesta.json);
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: 'Error interno del servidor'
+    });
+  }
+});
+
+async function procesarMensajeBot(from, text) {
+  if (!from) {
+    return {
+      status: 400,
+      json: { error: 'falta from' }
+    };
+  }
+
+  if (!text) {
+    return {
+      status: 400,
+      json: { error: 'falta text' }
+    };
+  }
+
+  const esTelefonoValido = !isNaN(from.trim()) && from.trim() !== '';
+  const mensajeLimpio = text.toLowerCase().trim();
+
+  if (!esTelefonoValido) {
+    return {
+      status: 400,
+      json: { error: 'El teléfono debe contener solo números' }
+    };
+  }
+
+  const respuesta = await db.tx(async (t) => {
+    let contacto = await t.oneOrNone(
+      'SELECT * FROM contactos WHERE telefono = $1',
+      [from]
+    );
+
+    let pasoActual = 1;
+
+    if (!contacto) {
+      contacto = await t.one(
+        'INSERT INTO contactos(telefono) VALUES($1) RETURNING *',
+        [from]
+      );
+    } else {
+      const ultimoMensaje = await t.oneOrNone(
+        'SELECT paso FROM mensajes WHERE contacto_id = $1 ORDER BY creado_en DESC LIMIT 1',
+        [contacto.id]
+      );
+
+      if (ultimoMensaje) {
+        pasoActual = ultimoMensaje.paso;
+      }
+    }
+
+    let bot = {
+      reply: '',
+      producto: null,
+      productos: [
+        {
+          nombre: 'zapato',
+          img: 'https://foothill-blimp-chasing.ngrok-free.dev/test.png'
+        }
+      ]
+    };
+
+    let siguientePaso = pasoActual;
+    let respuesta;
+
+    switch (pasoActual) {
+      case 1:
+        if (mensajeLimpio === 'hola') {
+          siguientePaso = 2;
+          bot.reply = 'Hola, ¿Cómo te llamas?';
+
+          await t.none(
+            'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+            [contacto.id, 'in', mensajeLimpio, siguientePaso]
+          );
+
+          respuesta = {
+            reply: bot.reply
+          };
+        } else {
+          bot.reply = "No te entendí. Por favor, escribe 'Hola' para comenzar.";
+
+          respuesta = {
+            reply: bot.reply
+          };
+        }
+
+        break;
+
+      case 2:
+        bot.reply = `Bienvenido ${text}, ¿qué producto deseas ordenar el día de hoy?`;
+
+        await t.none(
+          'UPDATE contactos SET nombre = $1 WHERE id = $2',
+          [text, contacto.id]
+        );
+
+        siguientePaso = 3;
+
+        await t.none(
+          'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+          [contacto.id, 'in', text, siguientePaso]
+        );
+
+        respuesta = {
+          reply: bot.reply,
+          productos: bot.productos
+        };
+
+        break;
+
+      case 3:
+        const productoSeleccionado = bot.productos.find(
+          producto => mensajeLimpio === producto.nombre
+        );
+
+        if (productoSeleccionado) {
+          const totalSolicitudes = await t.one(
+            'SELECT count(*) FROM solicitudes'
+          );
+
+          const numeroFormateado = String(totalSolicitudes.count).padStart(3, '0');
+          const evento_id = `ev-${numeroFormateado}`;
+
+          await t.none(
+            'INSERT INTO mensajes (contacto_id, direccion, texto, paso, imagen_url) VALUES ($1, $2, $3, $4, $5)',
+            [
+              contacto.id,
+              'in',
+              productoSeleccionado.nombre,
+              siguientePaso,
+              productoSeleccionado.img
+            ]
+          );
+
+          await t.none(
+            'INSERT INTO solicitudes (producto, estado, evento_id, contacto_id) VALUES($1, $2, $3, $4)',
+            [
+              productoSeleccionado.nombre,
+              'pendiente',
+              evento_id,
+              contacto.id
+            ]
+          );
+
+          bot.reply = `Tu pedido de ${text} está en estado pendiente.`;
+          bot.producto = productoSeleccionado.img;
+
+          respuesta = {
+            reply: bot.reply,
+            producto: {
+              nombre: productoSeleccionado.nombre,
+              img: productoSeleccionado.img
+            }
+          };
+        } else {
+          bot.reply = "Lo siento, actualmente solo tenemos disponible: 'zapato'.";
+
+          respuesta = {
+            reply: bot.reply
+          };
+        }
+
+        break;
+
+      default:
+        bot.reply = 'Algo salió mal. Reiniciando...';
+
+        respuesta = {
+          reply: bot.reply
+        };
+
+        break;
+    }
+
+    if (bot.reply) {
+      await t.none(
+        'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+        [contacto.id, 'out', bot.reply, siguientePaso]
+      );
+    }
+
+    return {
+      status: 200,
+      json: respuesta
+    };
+  });
+
+  return respuesta;
+}
+
 async function procesarMensajeBotWhatsApp(from, text) {
   if (!from) {
     return {
@@ -499,6 +898,27 @@ app.get('/solicitudes', async (req, res) => {
     });
   }
 });
+
+app.post('/test-whatsapp', async (req,res) => {
+  try {
+    const resultado = await enviarMensajeWhatsApp(
+      process.env.WHATSAPP_TEST_NUMBER,
+      'Hola, este mensaje fue enviado desde Node.js'
+    )
+
+    return res.status(200).json({
+      mensaje: 'mensaje enviado correctamente',
+      resultado
+    }) 
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+
+    return res.status(500).json({
+      error: 'No se pudo enviar el mensaje',
+      detalle: error.response?.data || error.message
+    });
+  }
+})
 
 async function enviarMensajeWhatsApp(to, mensaje) {
   const url = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
