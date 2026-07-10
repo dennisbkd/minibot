@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentación MVP - MiniBot CRM</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --bg-dark: #0f172a;
+      --bg-light: #f8fafc;
+      --text-light: #f8fafc;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+      --accent: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Presentation Wrapper */
+    .deck {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Slide container */
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 60px 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(50px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      background: radial-gradient(circle at 80% 20%, #1e1e38 0%, var(--bg-dark) 100%);
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+
+    /* Typography & Headers */
+    .slide-header {
+      margin-bottom: 40px;
+    }
+
+    .slide-tag {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .slide-title {
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Content Layouts */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 50px;
+      width: 100%;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+      width: 100%;
+    }
+
+    /* Cover Slide Specific */
+    .slide-cover {
+      text-align: center;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #2e2a56 0%, var(--bg-dark) 100%);
+    }
+
+    .cover-logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+    }
+
+    .cover-title {
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cover-subtitle {
+      font-size: 20px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 50px auto;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    .cover-meta {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      font-size: 14px;
+      color: var(--text-muted);
+      border-top: 1px solid #1e293b;
+      padding-top: 24px;
+      width: 80%;
+      max-width: 600px;
+    }
+
+    .meta-item strong {
+      color: white;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Cards */
+    .card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 30px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      background: rgba(30, 41, 59, 0.6);
+      border-color: rgba(99, 102, 241, 0.3);
+      transform: translateY(-5px);
+    }
+
+    .card-icon {
+      font-size: 32px;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .card h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: white;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Bullet lists */
+    .bullet-list {
+      list-style: none;
+    }
+
+    .bullet-list li {
+      font-size: 18px;
+      margin-bottom: 20px;
+      position: relative;
+      padding-left: 36px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+
+    .bullet-list li i {
+      position: absolute;
+      left: 0;
+      top: 4px;
+      color: var(--primary);
+      font-size: 20px;
+    }
+
+    .bullet-list li strong {
+      color: white;
+    }
+
+    /* Flow Graphic */
+    .flow-steps {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      position: relative;
+    }
+
+    .flow-steps::before {
+      content: '';
+      position: absolute;
+      top: 40px;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+      z-index: 1;
+      opacity: 0.3;
+    }
+
+    .flow-step {
+      flex: 1;
+      text-align: center;
+      padding: 0 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .flow-num {
+      width: 80px;
+      height: 80px;
+      background: #1e293b;
+      border: 3px solid #334155;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 auto 20px auto;
+      transition: all 0.3s ease;
+    }
+
+    .flow-step:hover .flow-num {
+      background: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+      transform: scale(1.1);
+    }
+
+    .flow-step h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: white;
+    }
+
+    .flow-step p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Tech Stack Badge List */
+    .stack-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .badge-item {
+      background: #1e293b;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+      border: 1px solid #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-item i {
+      color: var(--primary);
+    }
+
+    /* Footer & Controls */
+    .footer {
+      position: absolute;
+      bottom: 24px;
+      left: 0;
+      width: 100%;
+      padding: 0 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+    }
+
+    .btn-ctrl {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-ctrl:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="deck">
+
+    <!-- SLIDE 1: PORTADA -->
+    <div class="slide slide-cover active">
+      <div class="cover-logo">
+        <i class="fa-solid fa-robot"></i>
+      </div>
+      <h1 class="cover-title">MiniBot CRM</h1>
+      <p class="cover-subtitle">Chatbot Transaccional de WhatsApp & CRM de Gestión de Pedidos</p>
+      
+      <div class="cover-meta">
+        <div class="meta-item">
+          <strong>Presentación MVP</strong>
+          Defensa Práctica
+        </div>
+        <div class="meta-item">
+          <strong>Arquitectura</strong>
+          Node.js, Postgres & Meta API
+        </div>
+        <div class="meta-item">
+          <strong>Integrantes</strong>
+          Equipo de Desarrollo
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: EL PROBLEMA -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">Contexto y Oportunidad</span>
+        <h2 class="slide-title">El Desafío de la Venta Conversacional</h2>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <ul class="bullet-list">
+              <li>
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <strong>Demora en Atención:</strong> Los clientes de e-commerce exigen respuestas inmediatas en canales como WhatsApp. Si no respondes en 5 minutos, la venta se pierde.
+              </li>
+              <li>
+                <i class="fa-solid fa-person-circle-exclamation"></i>
+                <strong>Carga Operativa:</strong> Responder manualmente preguntas de stock, enviar fotos y registrar datos de pedidos satura a los equipos comerciales.
+              </li>
+              <li>
+                <i class="fa-solid fa-database"></i>
+                <strong>Desconexión de Datos:</strong> Las conversaciones se quedan en teléfonos individuales y no se centralizan en una base de datos ni sistema de control.
+              </li>
+            </ul>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="card" style="border-left: 4px solid #ef4444;">
+              <h3>Atención 24/7 ineficiente</h3>
+              <p>Perder ventas por falta de personal disponible fuera de horarios de oficina o fines de semana.</p>
+            </div>
+            <div class="card" style="border-left: 4px solid #ef4444;">
+              <h3>Control de stock ciego</h3>
+              <p>Vender productos sin validar inventarios reales, provocando quiebres de stock y molestando al cliente.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: LA SOLUCIÓN -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">La Propuesta</span>
+        <h2 class="slide-title">Presentando MiniBot CRM</h2>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-icon"><i class="fa-brands fa-whatsapp"></i></div>
+            <h3>WhatsApp Cloud API</h3>
+            <p>Conexión directa con la API oficial de Meta para enviar respuestas instantáneas estructuradas y fichas de productos con imagen.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon"><i class="fa-solid fa-share-nodes"></i></div>
+            <h3>Base de Datos Relacional</h3>
+            <p>PostgreSQL (Supabase) centralizado. Persistencia e integridad referencial de clientes, productos, stock y mensajes.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <h3>CRM Administrativo</h3>
+            <p>Panel web minimalista para auditar transacciones, visualizar estadísticas y disparar confirmaciones de pedidos con webhooks seguros.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: ARQUITECTURA TÉCNICA -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">Tecnología</span>
+        <h2 class="slide-title">Arquitectura del Sistema</h2>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <ul class="bullet-list">
+              <li>
+                <i class="fa-solid fa-server"></i>
+                <strong>Backend (Node.js + Express):</strong> Servidor que maneja los webhooks de Meta y expone la API de solicitudes del CRM.
+              </li>
+              <li>
+                <i class="fa-solid fa-brain"></i>
+                <strong>Máquina de Estados en BD:</strong> El estado conversacional se guarda en PostgreSQL. Cero pérdidas si el servidor se apaga.
+              </li>
+              <li>
+                <i class="fa-solid fa-shield-halved"></i>
+                <strong>Transacciones Atómicas:</strong> Implementación de <code>db.tx</code> (pg-promise) para evitar problemas de concurrencia y sobreventa.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Stack Tecnológico</h3>
+            <div class="stack-badges">
+              <span class="badge-item"><i class="fa-brands fa-node-js"></i> Node.js (Módulos ES)</span>
+              <span class="badge-item"><i class="fa-solid fa-rocket"></i> Express</span>
+              <span class="badge-item"><i class="fa-solid fa-database"></i> PostgreSQL (Supabase)</span>
+              <span class="badge-item"><i class="fa-solid fa-link"></i> pg-promise (Transacciones)</span>
+              <span class="badge-item"><i class="fa-solid fa-cloud"></i> Meta Cloud API (WhatsApp)</span>
+              <span class="badge-item"><i class="fa-solid fa-user-shield"></i> Webhook Security (x-webhook-secret)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: FLUJO CONVERSACIONAL -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">Experiencia de Usuario</span>
+        <h2 class="slide-title">Máquina de Estados (Flujo)</h2>
+      </div>
+      <div class="slide-body">
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <h4>Saludo inicial</h4>
+            <p>Usuario escribe 'Hola' para arrancar la conversación.</p>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <h4>Registro de Perfil</h4>
+            <p>Se le pregunta el nombre y se guarda en la tabla 'contactos'.</p>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">3</div>
+            <h4>Categorías</h4>
+            <p>Muestra categorías disponibles cargadas de la base de datos.</p>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">4</div>
+            <h4>Pedido y Reserva</h4>
+            <p>Se listan productos. Al elegir uno, se descuenta stock y se genera la solicitud.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: EL CRM -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">Panel Administrativo</span>
+        <h2 class="slide-title">CRM de Control e Indicadores</h2>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <ul class="bullet-list">
+              <li>
+                <i class="fa-solid fa-gauge-high"></i>
+                <strong>Indicadores Dinámicos:</strong> Tarjetas superiores que calculan al instante el total de ventas, pendientes y confirmados.
+              </li>
+              <li>
+                <i class="fa-solid fa-credit-card"></i>
+                <strong>Simulador de Pago:</strong> Botón que dispara el flujo de pasarela de pago simulado usando autenticación secreta.
+              </li>
+              <li>
+                <i class="fa-solid fa-bell"></i>
+                <strong>Notificaciones en Vivo:</strong> Al aprobar un pedido en el CRM, el cliente recibe un WhatsApp automático de confirmación.
+              </li>
+            </ul>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="card" style="border-left: 4px solid var(--accent);">
+              <h3>Visualización de Datos Moderna</h3>
+              <p>Diseñado con Inter, sombras suaves, y modo Claro/Oscuro con persistencia local para confort visual del operador.</p>
+            </div>
+            <div class="card" style="border-left: 4px solid var(--accent);">
+              <h3>Conectores Rápidos de Chat</h3>
+              <p>Apertura directa del historial de chat del cliente desde la misma tabla de pedidos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: RESILIENCIA Y PLAN B -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">Garantía de Demo</span>
+        <h2 class="slide-title">Resiliencia y Plan B (Simulador)</h2>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card" style="border-left: 4px solid #fbbf24;">
+            <h3>El Problema con APIs Externas</h3>
+            <p>Los tokens de WhatsApp Developer expiran cada 24 horas y los webhooks públicos (Ngrok) cambian de URL, lo que puede arruinar demostraciones críticas.</p>
+          </div>
+          <div class="card" style="border-left: 4px solid var(--accent);">
+            <h3>La Solución: Plan B de Simulación</h3>
+            <p>Un simulador de chat embebido que hereda toda la lógica conversacional de la base de datos y permite chatear directamente en la web. No requiere tokens, no consume Internet y garantiza la demo en cualquier escenario.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: CONCLUSIONES -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">El Futuro</span>
+        <h2 class="slide-title">Conclusiones del MVP</h2>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent);"><i class="fa-solid fa-check-double"></i></div>
+            <h3>Objetivos Cumplidos</h3>
+            <p>Consumo exitoso de la API oficial de Meta, creación de CRM y API local de solicitudes funcionando integradas.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent);"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3>Robustez y Seguridad</h3>
+            <p>Control de sesión en base de datos PostgreSQL resistente a fallos e integridad de inventario robusta.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent);"><i class="fa-solid fa-arrows-spin"></i></div>
+            <h3>Futuro Escalable</h3>
+            <p>Arquitectura modular que permite integrar pasarelas de pago reales y catálogos ilimitados fácilmente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER & CONTROLS -->
+    <footer class="footer">
+      <div id="slide-number">1 / 8</div>
+      <div>MiniBot CRM MVP &copy; 2026</div>
+      <div class="controls">
+        <button class="btn-ctrl" onclick="prevSlide()" title="Diapositiva Anterior"><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="btn-ctrl" onclick="nextSlide()" title="Diapositiva Siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </footer>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-bar" id="progress"></div>
+
+  </div>
+
+  <script>
+    let currentSlideIndex = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const slideNumberText = document.getElementById('slide-number');
+    const progressBar = document.getElementById('progress');
+
+    function showSlide(index) {
+      if (index < 0 || index >= totalSlides) return;
+      
+      slides[currentSlideIndex].classList.remove('active');
+      currentSlideIndex = index;
+      slides[currentSlideIndex].classList.add('active');
+
+      // Update footer
+      slideNumberText.textContent = `${currentSlideIndex + 1} / ${totalSlides}`;
+
+      // Update progress bar
+      const progressPercent = ((currentSlideIndex + 1) / totalSlides) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+    }
+
+    function nextSlide() {
+      if (currentSlideIndex < totalSlides - 1) {
+        showSlide(currentSlideIndex + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlideIndex > 0) {
+        showSlide(currentSlideIndex - 1);
+      }
+    }
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      }
+    });
+
+    // Touch Swipe Navigation
+    let startX = 0;
+    document.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+    });
+
+    document.addEventListener('touchend', (e) => {
+      const endX = e.changedTouches[0].clientX;
+      const diffX = startX - endX;
+      if (Math.abs(diffX) > 50) {
+        if (diffX > 0) {
+          nextSlide();
+        } else {
+          prevSlide();
+        }
+      }
+    });
+
+    // Initialize progress bar
+    showSlide(0);
+  </script>
+
+</body>
+
+</html>

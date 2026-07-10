@@ -413,6 +413,7 @@ app.post('/webhook/confirmacion', async (req, res) => {
           s.id,
           s.estado,
           s.evento_id,
+          c.id AS contacto_id,
           c.telefono,
           c.nombre AS contacto_nombre,
           p.nombre AS producto_nombre
@@ -423,6 +424,7 @@ app.post('/webhook/confirmacion', async (req, res) => {
           `SELECT
             s.id,
             s.estado,
+            c.id AS contacto_id,
             c.telefono,
             p.nombre AS producto_nombre
           FROM solicitudes s
@@ -433,11 +435,11 @@ app.post('/webhook/confirmacion', async (req, res) => {
           WHERE s.id = $1`,
           [solicitud_id]
         );
-        
+
         if (!solicitudExiste) {
           return { status: 404, json: { error: 'Solicitud no encontrada' } };
         }
-        
+
         return {
           status: 200,
           json: { mensaje: 'La solicitud ya estaba confirmada o no disponible' },
@@ -456,6 +458,16 @@ app.post('/webhook/confirmacion', async (req, res) => {
     if (respuesta.notificarCliente && respuesta.solicitud?.telefono) {
       const mensajeConfirmacion = `Tu pedido de ${respuesta.solicitud.producto_nombre} fue confirmado exitosamente.`;
 
+      // Registrar el mensaje en el historial para simulación local
+      try {
+        await db.none(
+          'INSERT INTO mensajes (contacto_id, direccion, texto, paso) VALUES ($1, $2, $3, $4)',
+          [respuesta.solicitud.contacto_id, 'out', mensajeConfirmacion, 4]
+        );
+      } catch (dbErr) {
+        console.error('Error guardando mensaje de confirmacion en BD:', dbErr);
+      }
+
       try {
         await enviarMensajeWhatsApp(respuesta.solicitud.telefono, mensajeConfirmacion);
       } catch (error) {
@@ -471,6 +483,21 @@ app.post('/webhook/confirmacion', async (req, res) => {
   }
 });
 
+app.get('/api/historial/:telefono', async (req, res) => {
+  try {
+    const { telefono } = req.params;
+    const contacto = await db.oneOrNone('SELECT id FROM contactos WHERE telefono = $1', [telefono]);
+    if (!contacto) return res.json([]);
+    const mensajes = await db.any(
+      'SELECT direccion, texto, imagen_url FROM mensajes WHERE contacto_id = $1 ORDER BY creado_en ASC',
+      [contacto.id]
+    );
+    res.json(mensajes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/solicitudes', async (req, res) => {
   try {
     const solicitudes = await db.any(`
@@ -480,7 +507,8 @@ app.get('/solicitudes', async (req, res) => {
         c.nombre,
         p.nombre AS producto,
         s.estado,
-        s.evento_id
+        s.evento_id,
+        s.creado_en AS fecha
       FROM solicitudes s
       JOIN contactos c
       ON c.id = s.contacto_id
@@ -503,7 +531,7 @@ app.get('/solicitudes', async (req, res) => {
 async function enviarMensajeWhatsApp(to, mensaje) {
   const url = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
 
- const response = await axios.post(
+  const response = await axios.post(
     url,
     {
       messaging_product: 'whatsapp',
@@ -623,7 +651,18 @@ app.post('/webhook/whatsapp', async (req, res) => {
 });
 
 
-app.get('/test', (req,res)=>{
+app.post('/api/test-chat', async (req, res) => {
+  try {
+    const { from, text } = req.body;
+    const respuesta = await procesarMensajeBotWhatsApp(from, text);
+    return res.status(respuesta.status).json(respuesta.json);
+  } catch (error) {
+    console.error('Error en test-chat:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.get('/test', (req, res) => {
   res.send('Hola esto es un test para ngrok')
 })
 

@@ -4,76 +4,1102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiniBot CRM - Control de Solicitudes</title>
 
-  <title>CRM - Solicitudes</title>
+  <!-- Google Fonts: Inter para tipografía elegante -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome para iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
+    :root {
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --background: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      
+      --success: #10b981;
+      --success-bg: #d1fae5;
+      --success-text: #065f46;
+
+      --pending: #f59e0b;
+      --pending-bg: #fef3c7;
+      --pending-text: #92400e;
+    }
+
+    body.dark-theme {
+      --background: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --success-text: #34d399;
+
+      --pending: #f59e0b;
+      --pending-bg: rgba(245, 158, 11, 0.15);
+      --pending-text: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      margin: 30px;
+      background-color: var(--background);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Simulation Mode Banner */
+    .sim-banner {
+      background-color: #fef3c7;
+      border-bottom: 1px solid #fde68a;
+      padding: 10px 40px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #92400e;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      animation: slideDown 0.3s ease;
+    }
+
+    body.dark-theme .sim-banner {
+      background-color: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    /* Navbar */
+    .navbar {
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .navbar-logo {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
+    }
+
+    .navbar-title h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .navbar-title p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .navbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px;
+      flex: 1;
+    }
+
+    /* Stats Overview Widgets */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    }
+
+    .stat-info h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-info p {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .stat-icon.total {
+      background-color: #e0e7ff;
+      color: #4f46e5;
+    }
+
+    .stat-icon.pending {
+      background-color: #fef3c7;
+      color: #d97706;
+    }
+
+    .stat-icon.confirmed {
+      background-color: #d1fae5;
+      color: #059669;
+    }
+
+    /* Actions Bar */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .action-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+      background-color: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    body.dark-theme .btn-action:hover {
+      background-color: #334155;
+      border-color: #475569;
+    }
+
+    .btn-action i.spin {
+      animation: spin 1s linear infinite;
+    }
+
+    /* Table Container */
+    .table-container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+      margin-bottom: 60px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-    }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 10px;
       text-align: left;
     }
 
     th {
-      background-color: #f2f2f2;
+      background-color: #f8fafc;
+      padding: 16px 24px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
     }
 
+    body.dark-theme th {
+      background-color: #0f172a;
+    }
+
+    td {
+      padding: 18px 24px;
+      font-size: 14px;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr {
+      transition: background-color 0.2s ease;
+    }
+
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+
+    body.dark-theme tr:hover td {
+      background-color: #1e293b;
+    }
+
+    /* Badges */
     .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge::before {
+      content: '';
       display: inline-block;
-      padding: 5px 10px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: bold;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
     }
 
     .badge-pendiente {
-      background-color: #fff3cd;
-      color: #856404;
+      background-color: var(--pending-bg);
+      color: var(--pending-text);
+    }
+
+    .badge-pendiente::before {
+      background-color: var(--pending);
     }
 
     .badge-confirmada {
-      background-color: #d4edda;
-      color: #155724;
+      background-color: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    .badge-confirmada::before {
+      background-color: var(--success);
+    }
+
+    /* Action buttons in Table */
+    .table-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-simular {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--success);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-simular:hover {
+      background-color: #059669;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-table-icon {
+      background-color: var(--background);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-table-icon:hover {
+      background-color: #e2e8f0;
+      border-color: #cbd5e1;
+    }
+
+    body.dark-theme .btn-table-icon:hover {
+      background-color: #334155;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 40px;
+      color: var(--text-muted);
+    }
+
+    .empty-state i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: #94a3b8;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    /* Floating Robot Widget */
+    .robot-widget {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 90px;
+      height: 90px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      border-radius: 24px;
+      box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5), 0 8px 10px -6px rgba(99, 102, 241, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .robot-widget.pulse {
+      animation: widgetPulse 2s infinite;
+    }
+
+    .robot-widget:hover {
+      transform: scale(1.08);
+    }
+
+    .robot-face {
+      position: relative;
+      width: 54px;
+      height: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    /* Antenna */
+    .robot-antenna {
+      position: absolute;
+      top: -8px;
+      width: 4px;
+      height: 8px;
+      background-color: white;
+      border-radius: 2px;
+    }
+    
+    .robot-antenna::before {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: -2px;
+      width: 8px;
+      height: 4px;
+      background-color: white;
+      border-radius: 2px;
+    }
+
+    /* Ears */
+    .robot-ear-l, .robot-ear-r {
+      position: absolute;
+      width: 6px;
+      height: 18px;
+      background-color: white;
+      border-radius: 3px;
+      top: 15px;
+    }
+    .robot-ear-l { left: -4px; }
+    .robot-ear-r { right: -4px; }
+
+    /* Head */
+    .robot-head {
+      width: 48px;
+      height: 38px;
+      background-color: white;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      padding: 6px 6px;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
+      position: relative;
+    }
+
+    /* Eyes */
+    .robot-eyes-container {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      padding: 0 4px;
+    }
+
+    .robot-eye-socket {
+      width: 8px;
+      height: 8px;
+      background-color: transparent;
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .robot-pupil {
+      width: 7px;
+      height: 7px;
+      background-color: #4f46e5;
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    /* Mouth */
+    .robot-mouth {
+      display: flex;
+      justify-content: center;
+      gap: 3px;
+      margin-top: 2px;
+    }
+
+    .robot-dot {
+      width: 3px;
+      height: 3px;
+      background-color: #4f46e5;
+      border-radius: 50%;
+    }
+
+    /* Chat Simulator Styles */
+    .chat-simulator {
+      position: fixed;
+      bottom: 124px;
+      right: 24px;
+      width: 360px;
+      height: 520px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 999;
+      animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .chat-simulator.active {
+      display: flex;
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      padding: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    .chat-close-btn:hover {
+      opacity: 1;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background-color: #f1f5f9;
+    }
+
+    body.dark-theme .chat-messages {
+      background-color: #0f172a;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .chat-bubble.bot {
+      background-color: var(--card-bg);
+      color: var(--text-main);
+      align-self: flex-start;
+      border-bottom-left-radius: 2px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .chat-bubble.user {
+      background-color: #4f46e5;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 2px;
+      box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+    }
+
+    .chat-bubble-img {
+      max-width: 100%;
+      max-height: 150px;
+      object-fit: contain;
+      border-radius: 10px;
+      margin-top: 6px;
+      display: block;
+    }
+
+    .chat-input-area {
+      padding: 12px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+      background-color: var(--card-bg);
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 13px;
+      outline: none;
+      background-color: var(--background);
+      color: var(--text-main);
+    }
+
+    .chat-input-area button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+
+    .chat-input-area button:hover {
+      background-color: #4338ca;
+    }
+
+    /* CSS Animations */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
+    }
+
+    @keyframes widgetPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
+      }
+      70% {
+        box-shadow: 0 0 0 15px rgba(99, 102, 241, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <h1>CRM de Solicitudes</h1>
+  <!-- Simulation Mode Banner -->
+  <div class="sim-banner" id="sim-banner">
+    <i class="fa-solid fa-triangle-exclamation" style="font-size: 16px;"></i>
+    <span>
+      <strong>Plan B (Modo Simulación Activo):</strong> Se ha desactivado la dependencia externa de Meta. Usa el robot flotante de abajo para conversar localmente con el bot y ver el flujo en tiempo real.
+    </span>
+  </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Teléfono</th>
-        <th>Nombre</th>
-        <th>Producto</th>
-        <th>Estado</th>
-        <th>Evento</th>
-      </tr>
-    </thead>
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="navbar-brand">
+      <div class="navbar-logo">
+        <i class="fa-solid fa-robot"></i>
+      </div>
+      <div class="navbar-title">
+        <h1>CRM MiniBot</h1>
+        <p>Panel de Administración y Control</p>
+      </div>
+    </div>
+    <div class="navbar-actions">
+      <!-- Plan A/B Toggle -->
+      <button class="btn-action" id="mode-toggle" onclick="toggleMode()" title="Cambiar entre modo real y simulador">
+        <i class="fa-solid fa-bolt" id="mode-icon" style="color: #10b981;"></i>
+        <span id="mode-label" style="font-weight: 600;">Plan A (API Real)</span>
+      </button>
 
-    <tbody id="tabla-solicitudes">
-      <tr>
-        <td colspan="5">Cargando solicitudes...</td>
-      </tr>
-    </tbody>
-  </table>
+      <!-- Dark / Light theme toggle -->
+      <button class="btn-action" id="theme-toggle" onclick="toggleTheme()" title="Cambiar Tema (Blanco/Negro)">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    
+    <!-- Stats widgets -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Total Solicitudes</h3>
+          <p id="stat-total">0</p>
+        </div>
+        <div class="stat-icon total">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Pedidos Pendientes</h3>
+          <p id="stat-pendientes">0</p>
+        </div>
+        <div class="stat-icon pending">
+          <i class="fa-solid fa-hourglass-half"></i>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Pedidos Confirmados</h3>
+          <p id="stat-confirmados">0</p>
+        </div>
+        <div class="stat-icon confirmed">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table header actions -->
+    <section class="action-bar">
+      <div class="action-title">Registro de Solicitudes</div>
+      <button class="btn-action" onclick="cargarSolicitudes(this)">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        Recargar Datos
+      </button>
+    </section>
+
+    <!-- Table content -->
+    <section class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 5%;">ID</th>
+            <th style="width: 25%;">Contacto</th>
+            <th style="width: 25%;">Producto</th>
+            <th style="width: 12%;">Estado</th>
+            <th style="width: 10%;">Evento ID</th>
+            <th style="width: 15%;">Fecha</th>
+            <th style="width: 8%;">Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody id="tabla-solicitudes">
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+              <i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i> Cargando solicitudes...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Interactive Floating Robot Widget -->
+  <div class="robot-widget" id="robot-widget" onclick="reproducirEfectoRobot()" title="¡Hola! Haz clic aquí para simular chat local">
+    <div class="robot-face">
+      <div class="robot-antenna"></div>
+      <div class="robot-ear-l"></div>
+      <div class="robot-ear-r"></div>
+      <div class="robot-head">
+        <div class="robot-eyes-container">
+          <div class="robot-eye-socket">
+            <div class="robot-pupil"></div>
+          </div>
+          <div class="robot-eye-socket">
+            <div class="robot-pupil"></div>
+          </div>
+        </div>
+        <div class="robot-mouth">
+          <div class="robot-dot"></div>
+          <div class="robot-dot"></div>
+          <div class="robot-dot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Simulator Window -->
+  <div class="chat-simulator" id="chat-simulator">
+    <div class="chat-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-robot" style="font-size: 18px;"></i>
+        <div>
+          <h4 style="font-size: 14px; font-weight: 600; margin: 0; line-height: 1.2;">Simulador MiniBot</h4>
+          <span style="font-size: 11px; color: #a5b4fc; display: block; line-height: 1.1;">Pruebas locales en vivo</span>
+        </div>
+      </div>
+      <button class="chat-close-btn" onclick="toggleChatSimulator()">&times;</button>
+    </div>
+    
+    <div style="padding: 8px 16px; background-color: var(--border-color); display: flex; align-items: center; justify-content: space-between; font-size: 12px; border-bottom: 1px solid var(--border-color);">
+      <span style="color: var(--text-muted); font-weight: 500;">Teléfono de Pruebas:</span>
+      <input type="text" id="chat-phone-input" value="59165862797" onchange="cargarHistorialChat()" style="padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color); width: 120px; font-size: 12px; background-color: var(--card-bg); color: var(--text-main); font-weight: 600; text-align: center;">
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-bubble bot">
+        Cargando historial de chat...
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Escribe un mensaje..." onkeypress="handleChatKey(event)">
+      <button onclick="enviarMensajeSimulado()"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
 
   <script>
-    async function cargarSolicitudes() {
+    // System Modes Management (Plan A: Real, Plan B: Simulado)
+    let currentMode = 'real';
+
+    function initMode() {
+      const savedMode = localStorage.getItem('crm-mode') || 'real';
+      setMode(savedMode);
+    }
+
+    function toggleMode() {
+      const targetMode = currentMode === 'real' ? 'simulado' : 'real';
+      setMode(targetMode);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      localStorage.setItem('crm-mode', mode);
+
+      const modeIcon = document.getElementById('mode-icon');
+      const modeLabel = document.getElementById('mode-label');
+      const simBanner = document.getElementById('sim-banner');
+      const robotWidget = document.getElementById('robot-widget');
+
+      if (mode === 'real') {
+        modeIcon.className = 'fa-solid fa-bolt';
+        modeIcon.style.color = '#10b981'; // green for live API
+        modeLabel.textContent = 'Plan A (API Real)';
+        simBanner.style.display = 'none';
+        robotWidget.classList.remove('pulse');
+      } else {
+        modeIcon.className = 'fa-solid fa-triangle-exclamation';
+        modeIcon.style.color = '#f59e0b'; // amber for simulation
+        modeLabel.textContent = 'Plan B (Simulación)';
+        simBanner.style.display = 'flex';
+        robotWidget.classList.add('pulse'); // highlight robot button
+      }
+    }
+
+    // Theme Management
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      const toggleBtn = document.getElementById('theme-toggle');
+      const icon = toggleBtn.querySelector('i');
+      
+      if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+        icon.className = 'fa-solid fa-sun';
+      } else {
+        document.body.classList.remove('dark-theme');
+        icon.className = 'fa-solid fa-moon';
+      }
+    }
+
+    function toggleTheme() {
+      const toggleBtn = document.getElementById('theme-toggle');
+      const icon = toggleBtn.querySelector('i');
+      
+      if (document.body.classList.contains('dark-theme')) {
+        document.body.classList.remove('dark-theme');
+        icon.className = 'fa-solid fa-moon';
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.body.classList.add('dark-theme');
+        icon.className = 'fa-solid fa-sun';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    // Interactive Eyes Tracking Cursor
+    document.addEventListener('mousemove', (e) => {
+      const pupils = document.querySelectorAll('.robot-pupil');
+      pupils.forEach(pupil => {
+        const rect = pupil.parentElement.getBoundingClientRect();
+        const eyeX = rect.left + rect.width / 2;
+        const eyeY = rect.top + rect.height / 2;
+        
+        const deltaX = e.clientX - eyeX;
+        const deltaY = e.clientY - eyeY;
+        const angle = Math.atan2(deltaY, deltaX);
+        
+        const maxDistance = 2.5; 
+        const distance = Math.min(maxDistance, Math.hypot(deltaX, deltaY) / 40);
+        
+        const moveX = Math.cos(angle) * distance;
+        const moveY = Math.sin(angle) * distance;
+        
+        pupil.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      });
+    });
+
+    // Toggle Chat Simulator window
+    function toggleChatSimulator() {
+      const chat = document.getElementById('chat-simulator');
+      chat.classList.toggle('active');
+      if (chat.classList.contains('active')) {
+        cargarHistorialChat();
+      }
+    }
+
+    function handleChatKey(e) {
+      if (e.key === 'Enter') {
+        enviarMensajeSimulado();
+      }
+    }
+
+    // Load Chat History from Database
+    async function cargarHistorialChat() {
+      const phoneInput = document.getElementById('chat-phone-input');
+      const messagesContainer = document.getElementById('chat-messages');
+      const from = phoneInput.value.trim();
+      if (!from) return;
+
+      try {
+        const res = await fetch(`/api/historial/${from}`);
+        if (!res.ok) throw new Error('Error al obtener historial');
+        const mensajes = await res.json();
+        
+        messagesContainer.innerHTML = '';
+        
+        if (mensajes.length === 0) {
+          messagesContainer.innerHTML = `
+            <div class="chat-bubble bot">
+              ¡Hola! No hay mensajes previos con este número. Escribe <strong>"Hola"</strong> para iniciar.
+            </div>
+          `;
+          return;
+        }
+
+        mensajes.forEach(msg => {
+          const bubble = document.createElement('div');
+          bubble.className = `chat-bubble ${msg.direccion === 'in' ? 'user' : 'bot'}`;
+          bubble.innerHTML = msg.texto.replace(/\n/g, '<br>');
+          
+          if (msg.imagen_url) {
+            const img = document.createElement('img');
+            img.src = msg.imagen_url;
+            img.className = 'chat-bubble-img';
+            bubble.appendChild(img);
+          }
+          messagesContainer.appendChild(bubble);
+        });
+        
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      } catch (err) {
+        console.error(err);
+        messagesContainer.innerHTML = `<div class="chat-bubble bot" style="color: red;">Error al cargar el historial.</div>`;
+      }
+    }
+
+    // Open Chat Simulator for a specific phone number directly from Table
+    function abrirChatSimulado(telefono) {
+      const phoneInput = document.getElementById('chat-phone-input');
+      phoneInput.value = telefono;
+      
+      const chat = document.getElementById('chat-simulator');
+      if (!chat.classList.contains('active')) {
+        chat.classList.add('active');
+      }
+      cargarHistorialChat();
+    }
+
+    async function enviarMensajeSimulado() {
+      const input = document.getElementById('chat-input');
+      const messagesContainer = document.getElementById('chat-messages');
+      const phoneInput = document.getElementById('chat-phone-input');
+      
+      const text = input.value.trim();
+      const from = phoneInput.value.trim();
+
+      if (!text) return;
+
+      // Add user message locally
+      const userBubble = document.createElement('div');
+      userBubble.className = 'chat-bubble user';
+      userBubble.textContent = text;
+      messagesContainer.appendChild(userBubble);
+      input.value = '';
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      try {
+        const respuesta = await fetch('/api/test-chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ from, text })
+        });
+
+        const data = await respuesta.json();
+        
+        // Reload history to ensure synchronization with database
+        await cargarHistorialChat();
+
+        // Auto reload requests table
+        cargarSolicitudes();
+
+      } catch (error) {
+        console.error(error);
+        const botBubble = document.createElement('div');
+        botBubble.className = 'chat-bubble bot';
+        botBubble.innerHTML = '<span style="color: #ef4444; font-weight: 500;">Error de conexión con el backend de pruebas.</span>';
+        messagesContainer.appendChild(botBubble);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }
+
+    // Effect on robot click
+    function reproducirEfectoRobot() {
+      const widget = document.querySelector('.robot-widget');
+      widget.style.transform = 'scale(1.2) rotate(15deg)';
+      setTimeout(() => {
+        widget.style.transform = 'scale(1) rotate(0deg)';
+      }, 300);
+      
+      const pupils = document.querySelectorAll('.robot-pupil');
+      pupils.forEach(pupil => {
+        pupil.style.backgroundColor = '#f59e0b';
+      });
+      setTimeout(() => {
+        pupils.forEach(pupil => {
+          pupil.style.backgroundColor = '#4f46e5';
+        });
+      }, 600);
+
+      // Open the local simulator chat
+      toggleChatSimulator();
+    }
+
+    // Fetch and Load solicitudes
+    async function cargarSolicitudes(btn = null) {
+      let icon = null;
+      if (btn) {
+        icon = btn.querySelector('i');
+        icon.classList.add('spin');
+        btn.disabled = true;
+      }
+
       const tabla = document.getElementById('tabla-solicitudes');
 
       try {
@@ -84,13 +1110,23 @@
         }
 
         const solicitudes = await respuesta.json();
+        
+        // Update stats widgets
+        document.getElementById('stat-total').textContent = solicitudes.length;
+        document.getElementById('stat-pendientes').textContent = solicitudes.filter(s => s.estado.toLowerCase() === 'pendiente').length;
+        document.getElementById('stat-confirmados').textContent = solicitudes.filter(s => s.estado.toLowerCase() === 'confirmada').length;
 
         tabla.innerHTML = '';
 
         if (solicitudes.length === 0) {
           tabla.innerHTML = `
             <tr>
-              <td colspan="6">No hay solicitudes registradas</td>
+              <td colspan="7">
+                <div class="empty-state">
+                  <i class="fa-solid fa-box-open"></i>
+                  <p>No hay solicitudes registradas en el sistema</p>
+                </div>
+              </td>
             </tr>
           `;
           return;
@@ -98,18 +1134,57 @@
 
         solicitudes.forEach((solicitud) => {
           const fila = document.createElement('tr');
+          const nombreMostrar = solicitud.nombre ? solicitud.nombre : 'Sin nombre';
+          const contacto = `<strong style="font-weight: 600;">${solicitud.telefono}</strong> <span style="color: var(--text-muted); font-size: 13px;">(${nombreMostrar})</span>`;
+          
+          let fechaFormateada = '-';
+          if (solicitud.fecha) {
+            try {
+              const d = new Date(solicitud.fecha);
+              fechaFormateada = d.toLocaleString('es-ES', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+              });
+            } catch(e) {
+              fechaFormateada = solicitud.fecha;
+            }
+          }
+          
+          let actionButtons = '';
+          if (solicitud.estado.toLowerCase() === 'pendiente') {
+            actionButtons += `
+              <button class="btn-simular" onclick="simularPago(${solicitud.id}, '${solicitud.evento_id}', '${solicitud.telefono}')">
+                <i class="fa-solid fa-credit-card"></i> Simular Pago
+              </button>
+            `;
+          }
+          // Icon button to open simulator for this specific user
+          actionButtons += `
+            <button class="btn-table-icon" onclick="abrirChatSimulado('${solicitud.telefono}')" title="Ver chat con este contacto">
+              <i class="fa-solid fa-comment-dots"></i>
+            </button>
+          `;
 
           fila.innerHTML = `
-            <td>${solicitud.id}</td>
-            <td>${solicitud.telefono}</td>
-            <td>${solicitud.nombre}</td>
-            <td>${solicitud.producto}</td>
+            <td><strong style="color: var(--text-muted);">#${solicitud.id}</strong></td>
+            <td>${contacto}</td>
+            <td style="font-weight: 500;">${solicitud.producto}</td>
             <td>
-              <span class="badge badge-${solicitud.estado}">
+              <span class="badge badge-${solicitud.estado.toLowerCase()}">
                 ${solicitud.estado}
               </span>
             </td>
-            <td>${solicitud.evento_id ?? '-'}</td>
+            <td><code>${solicitud.evento_id ? solicitud.evento_id : '-'}</code></td>
+            <td style="color: var(--text-muted); font-size: 13px;">${fechaFormateada}</td>
+            <td>
+              <div class="table-actions">
+                ${actionButtons}
+              </div>
+            </td>
           `;
 
           tabla.appendChild(fila);
@@ -117,17 +1192,67 @@
 
       } catch (error) {
         console.error(error);
-
         tabla.innerHTML = `
           <tr>
-            <td colspan="5">
-              Error al cargar las solicitudes
+            <td colspan="7">
+              <div class="empty-state" style="color: #ef4444;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i>
+                <p>Error al cargar las solicitudes. Verifica la conexión con el servidor.</p>
+              </div>
             </td>
           </tr>
         `;
+      } finally {
+        if (btn && icon) {
+          icon.classList.remove('spin');
+          btn.disabled = false;
+        }
       }
     }
 
+    async function simularPago(solicitudId, eventoId, telefono) {
+      try {
+        const confirmacion = confirm(`¿Deseas simular la confirmación de pago para la solicitud #${solicitudId}?`);
+        if (!confirmacion) return;
+
+        const secret = 'abc123';
+        const evId = eventoId && eventoId !== 'null' && eventoId !== '-' ? eventoId : `ev-${String(solicitudId).padStart(3, '0')}`;
+
+        const respuesta = await fetch('/webhook/confirmacion', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-webhook-secret': secret
+          },
+          body: JSON.stringify({
+            evento_id: evId,
+            solicitud_id: solicitudId
+          })
+        });
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok) {
+          alert(`Pago Simulado Exitosamente:\n${resultado.mensaje}`);
+          cargarSolicitudes();
+          
+          // If the simulator is open with this contact, refresh the history immediately to show the confirmation message!
+          const activePhone = document.getElementById('chat-phone-input').value.trim();
+          if (activePhone === telefono && document.getElementById('chat-simulator').classList.contains('active')) {
+            cargarHistorialChat();
+          }
+        } else {
+          alert(`Error al simular pago: ${resultado.error}`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Ocurrió un error al procesar el pago simulado.');
+      }
+    }
+
+    // Initialize application
+    initTheme();
+    initMode();
     cargarSolicitudes();
   </script>
 
